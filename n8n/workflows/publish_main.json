@@ -35,9 +35,9 @@
           },
           "conditions": [
             {
-              "id": "check-platforms",
+              "id": "check-ig",
               "leftValue": "={{ $json.body.platforms }}",
-              "rightValue": "x",
+              "rightValue": "ig",
               "operator": {
                 "type": "string",
                 "operation": "contains"
@@ -48,8 +48,8 @@
         },
         "options": {}
       },
-      "id": "route-x",
-      "name": "Has X Platform?",
+      "id": "route-ig",
+      "name": "Has IG Platform?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [650, 300]
@@ -57,8 +57,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.twitter.com/2/tweets",
-        "authentication": "oAuth2Api",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.IG_USER_ID }}/media",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -70,14 +69,38 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ text: $json.body.x_caption || $json.body.master_caption }) }}"
+        "jsonBody": "={{ JSON.stringify({ image_url: $('Webhook Trigger').item.json.body.image_url, caption: $('Webhook Trigger').item.json.body.ig_caption || $('Webhook Trigger').item.json.body.master_caption, access_token: $env.IG_ACCESS_TOKEN }) }}"
       },
-      "id": "post-to-x",
-      "name": "Post to X",
+      "id": "ig-create-container",
+      "name": "IG Create Media Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [850, 200],
-      "notes": "Configure X OAuth2 credentials in n8n"
+      "notes": "Step 1: Create media container. Set IG_USER_ID and IG_ACCESS_TOKEN in n8n environment variables."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.IG_USER_ID }}/media_publish",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ creation_id: $json.id, access_token: $env.IG_ACCESS_TOKEN }) }}"
+      },
+      "id": "ig-publish",
+      "name": "IG Publish Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 200],
+      "notes": "Step 2: Publish the media container"
     },
     {
       "parameters": {
@@ -94,13 +117,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'x', status: 'success', external_post_id: $json.data?.id || null, response_summary: 'Published successfully' }) }}"
+        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'ig', status: 'success', external_post_id: $json.id || null, response_summary: 'Published to Instagram successfully' }) }}"
       },
-      "id": "report-x-success",
-      "name": "Report X Success",
+      "id": "report-ig-success",
+      "name": "Report IG Success",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 200]
+      "position": [1250, 200]
     },
     {
       "parameters": {
@@ -117,13 +140,13 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'x', status: 'failed', response_summary: $json.message || 'X API error' }) }}"
+        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'ig', status: 'failed', response_summary: $json.error?.message || 'Instagram API error' }) }}"
       },
-      "id": "report-x-failure",
-      "name": "Report X Failure",
+      "id": "report-ig-failure",
+      "name": "Report IG Failure",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 400]
+      "position": [1050, 450]
     }
   ],
   "connections": {
@@ -131,19 +154,24 @@
       "main": [
         [
           { "node": "Respond OK", "type": "main", "index": 0 },
-          { "node": "Has X Platform?", "type": "main", "index": 0 }
+          { "node": "Has IG Platform?", "type": "main", "index": 0 }
         ]
       ]
     },
-    "Has X Platform?": {
+    "Has IG Platform?": {
       "main": [
-        [{ "node": "Post to X", "type": "main", "index": 0 }],
+        [{ "node": "IG Create Media Container", "type": "main", "index": 0 }],
         []
       ]
     },
-    "Post to X": {
+    "IG Create Media Container": {
       "main": [
-        [{ "node": "Report X Success", "type": "main", "index": 0 }]
+        [{ "node": "IG Publish Media", "type": "main", "index": 0 }]
+      ]
+    },
+    "IG Publish Media": {
+      "main": [
+        [{ "node": "Report IG Success", "type": "main", "index": 0 }]
       ]
     }
   },
