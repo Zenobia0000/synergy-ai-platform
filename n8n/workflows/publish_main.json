@@ -1,0 +1,159 @@
+{
+  "name": "Content Distributor - Publish Main",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "publish",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Publishing triggered' }) }}"
+      },
+      "id": "respond-ok",
+      "name": "Respond OK",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-platforms",
+              "leftValue": "={{ $json.body.platforms }}",
+              "rightValue": "x",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "route-x",
+      "name": "Has X Platform?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twitter.com/2/tweets",
+        "authentication": "oAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.body.x_caption || $json.body.master_caption }) }}"
+      },
+      "id": "post-to-x",
+      "name": "Post to X",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 200],
+      "notes": "Configure X OAuth2 credentials in n8n"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/webhooks/publish-result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Signature",
+              "value": "dev-webhook-secret"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'x', status: 'success', external_post_id: $json.data?.id || null, response_summary: 'Published successfully' }) }}"
+      },
+      "id": "report-x-success",
+      "name": "Report X Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/webhooks/publish-result",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Signature",
+              "value": "dev-webhook-secret"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'x', status: 'failed', response_summary: $json.message || 'X API error' }) }}"
+      },
+      "id": "report-x-failure",
+      "name": "Report X Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          { "node": "Respond OK", "type": "main", "index": 0 },
+          { "node": "Has X Platform?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Has X Platform?": {
+      "main": [
+        [{ "node": "Post to X", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Post to X": {
+      "main": [
+        [{ "node": "Report X Success", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "local"
+  },
+  "tags": [
+    { "name": "content-distributor" }
+  ]
+}
