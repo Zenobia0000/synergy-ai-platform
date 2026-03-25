@@ -57,8 +57,8 @@ echo [OK]   Migration done
 
 REM === 5. Start backend in background window ===
 echo.
-echo [INFO] Starting FastAPI backend (port 8000)...
-start "FastAPI-Backend" /min cmd /k "cd /d "%PROJECT_ROOT%\backend" && call "%PROJECT_ROOT%\.venv\Scripts\activate.bat" && uvicorn app.main:app --reload --port 8000"
+echo [INFO] Starting FastAPI backend (port 8888)...
+start "FastAPI-Backend" /min cmd /k "cd /d %PROJECT_ROOT%\backend && call %PROJECT_ROOT%\.venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8888"
 timeout /t 3 /nobreak >nul
 echo [OK]   Backend started (minimized window)
 
@@ -72,8 +72,8 @@ if not exist "node_modules" (
 
 REM === 7. Start frontend in background window ===
 echo.
-echo [INFO] Starting Vite frontend (port 8080)...
-start "Vite-Frontend" /min cmd /k "cd /d "%PROJECT_ROOT%\frontend" && npm run dev"
+echo [INFO] Starting Vite frontend (port 3000)...
+start "Vite-Frontend" /min cmd /k "cd /d %PROJECT_ROOT%\frontend && npm run dev"
 timeout /t 3 /nobreak >nul
 echo [OK]   Frontend started (minimized window)
 
@@ -83,9 +83,9 @@ echo ========================================
 echo   Dev environment ready!
 echo ========================================
 echo.
-echo   Frontend:  http://localhost:8080
-echo   Backend:   http://localhost:8000
-echo   API Docs:  http://localhost:8000/api/v1/docs
+echo   Frontend:  http://localhost:3000
+echo   Backend:   http://localhost:8888
+echo   API Docs:  http://localhost:8888/api/v1/docs
 echo   n8n:       http://localhost:5678
 echo.
 echo   Stop all:  scripts\stop-dev.bat

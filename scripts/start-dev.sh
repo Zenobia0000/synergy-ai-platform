@@ -73,25 +73,25 @@ ok "資料庫 migration 完成"
 # --------------------------------------------------
 # 4. 啟動後端 (背景)
 # --------------------------------------------------
-log "啟動 FastAPI 後端 (port 8000)..."
+log "啟動 FastAPI 後端 (port 8888)..."
 
-# 如果 8000 port 已被佔用，先停掉
-if curl -s http://localhost:8000/health >/dev/null 2>&1; then
-  warn "Port 8000 已有服務運行，跳過啟動"
+# 如果 8888 port 已被佔用，先停掉
+if curl -s http://localhost:8888/health >/dev/null 2>&1; then
+  warn "Port 8888 已有服務運行，跳過啟動"
 else
   cd "$PROJECT_ROOT/backend"
-  uvicorn app.main:app --reload --port 8000 &
+  uvicorn app.main:app --reload --port 8888 &
   BACKEND_PID=$!
 
   # 等待啟動
   for i in $(seq 1 10); do
-    if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+    if curl -s http://localhost:8888/health >/dev/null 2>&1; then
       break
     fi
     sleep 1
   done
 
-  if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+  if curl -s http://localhost:8888/health >/dev/null 2>&1; then
     ok "FastAPI 後端啟動成功 (PID: $BACKEND_PID)"
   else
     fail "FastAPI 後端啟動失敗"
@@ -111,14 +111,14 @@ fi
 # --------------------------------------------------
 # 6. 啟動前端 (前台)
 # --------------------------------------------------
-log "啟動 Vite 前端 (port 8080)..."
+log "啟動 Vite 前端 (port 3000)..."
 echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  開發環境就緒！${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo -e "  前端:    ${CYAN}http://localhost:8080${NC}"
-echo -e "  後端:    ${CYAN}http://localhost:8000${NC}"
-echo -e "  API 文檔: ${CYAN}http://localhost:8000/api/v1/docs${NC}"
+echo -e "  前端:    ${CYAN}http://localhost:3000${NC}"
+echo -e "  後端:    ${CYAN}http://localhost:8888${NC}"
+echo -e "  API 文檔: ${CYAN}http://localhost:8888/api/v1/docs${NC}"
 echo -e "  n8n:     ${CYAN}http://localhost:5678${NC} (需另外啟動)"
 echo ""
 echo -e "  按 ${YELLOW}Ctrl+C${NC} 停止前端，後端會一起停止"
