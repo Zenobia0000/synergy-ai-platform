@@ -26,31 +26,81 @@
 - Python 3.11+、[uv](https://docs.astral.sh/uv/)
 - Docker Desktop (PostgreSQL + n8n)
 
-### 1. 啟動資料庫與 n8n
+### 首次環境建立（手動）
+
+```bash
+# 1. 建立 Python 虛擬環境
+uv venv .venv
+
+# 2. 啟用虛擬環境
+source .venv/Scripts/activate   # Windows Git Bash
+# source .venv/bin/activate     # Linux/Mac
+
+# 3. 安裝 Python 套件
+uv pip install -r backend/requirements.txt
+
+# 4. 建立後端環境變數
+cp backend/.env.example backend/.env   # 編輯 .env 填入實際設定
+
+# 5. 安裝前端套件
+cd frontend && npm install --legacy-peer-deps && cd ..
+```
+
+### 一鍵啟動（推薦）
+
+**Windows:**
+
+```bash
+scripts\start-dev.bat
+```
+
+**Linux / Mac / Git Bash:**
+
+```bash
+bash scripts/start-dev.sh
+```
+
+腳本會自動完成：Docker 啟動 → DB migration → 後端啟動 → 前端啟動。
+
+停止所有服務：
+
+```bash
+# Windows
+scripts\stop-dev.bat
+
+# Linux / Mac / Git Bash
+bash scripts/stop-dev.sh
+```
+
+### 手動啟動
+
+如果不使用腳本，可以分步啟動：
+
+**1. 環境準備**
+
+```bash
+cp backend/.env.example backend/.env   # 首次需要，編輯環境變數
+```
+
+**2. 啟動 Docker 基礎設施**
 
 ```bash
 docker compose up -d
 ```
 
-### 2. 後端
+**3. 後端**
 
 ```bash
+source .venv/Scripts/activate   # Windows Git Bash
+# source .venv/bin/activate     # Linux/Mac
+
 cd backend
-cp .env.example .env          # 編輯環境變數（如需要）
-
-# 使用專案根目錄的虛擬環境
-source ../.venv/Scripts/activate   # Windows
-# source ../.venv/bin/activate     # Linux/Mac
-
 uv pip install -r requirements.txt
 alembic upgrade head
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8888
 ```
 
-- API 文檔: http://localhost:8000/api/v1/docs
-- Health: http://localhost:8000/health
-
-### 3. 前端
+**4. 前端**
 
 ```bash
 cd frontend
@@ -58,13 +108,20 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 
-- Web UI: http://localhost:8080
-
-### 4. n8n
+**5. n8n**
 
 - 管理介面: http://localhost:5678
 - 匯入 `n8n/workflows/publish_main.json`
 - 配置平台 API Credentials
+
+### 服務入口
+
+| 服務 | 網址 |
+| :--- | :--- |
+| 前端 Web UI | http://localhost:3000 |
+| 後端 API 文檔 | http://localhost:8888/api/v1/docs |
+| 後端 Health | http://localhost:8888/health |
+| n8n 管理介面 | http://localhost:5678 |
 
 ---
 
