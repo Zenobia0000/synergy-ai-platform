@@ -29,3 +29,12 @@ tmp/
 *.tmp
 *.bak
 pic/
+
+# 測試與覆蓋率產物
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Debug / 一次性除錯產出
+exec*.txt
+scripts/_parse_exec.py
