@@ -44,6 +44,10 @@ class ContentResponse(ContentBase):
     model_config = {"from_attributes": True}
 
 
+class ScheduleRequest(BaseModel):
+    publish_at: datetime
+
+
 class PublishLogResponse(BaseModel):
     log_id: uuid.UUID
     content_id: uuid.UUID

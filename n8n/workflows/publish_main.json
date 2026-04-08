@@ -57,7 +57,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.facebook.com/v21.0/{{ $env.IG_USER_ID }}/media",
+        "url": "=https://graph.instagram.com/v21.0/{{ $env.IG_USER_ID }}/media",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -69,19 +69,33 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ image_url: $('Webhook Trigger').item.json.body.image_url, caption: $('Webhook Trigger').item.json.body.ig_caption || $('Webhook Trigger').item.json.body.master_caption, access_token: $env.IG_ACCESS_TOKEN }) }}"
+        "jsonBody": "={{ JSON.stringify({ image_url: $('Webhook Trigger').item.json.body.image_url, caption: $('Webhook Trigger').item.json.body.ig_caption || $('Webhook Trigger').item.json.body.master_caption, access_token: $env.IG_ACCESS_TOKEN }) }}",
+        "options": {}
       },
       "id": "ig-create-container",
       "name": "IG Create Media Container",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [850, 200],
-      "notes": "Step 1: Create media container. Set IG_USER_ID and IG_ACCESS_TOKEN in n8n environment variables."
+      "onError": "continueErrorOutput",
+      "notes": "Step 1: Create media container. Reads IG_USER_ID and IG_ACCESS_TOKEN from n8n env (set via docker-compose)."
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "id": "wait-ig-container",
+      "name": "Wait for IG Container",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [950, 200],
+      "notes": "Give Instagram a few seconds to fetch and process the image before calling media_publish (prevents code 9007 'Media ID is not available')."
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://graph.facebook.com/v21.0/{{ $env.IG_USER_ID }}/media_publish",
+        "url": "=https://graph.instagram.com/v21.0/{{ $env.IG_USER_ID }}/media_publish",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -93,13 +107,15 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ creation_id: $json.id, access_token: $env.IG_ACCESS_TOKEN }) }}"
+        "jsonBody": "={{ JSON.stringify({ creation_id: $json.id, access_token: $env.IG_ACCESS_TOKEN }) }}",
+        "options": {}
       },
       "id": "ig-publish",
       "name": "IG Publish Media",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [1050, 200],
+      "onError": "continueErrorOutput",
       "notes": "Step 2: Publish the media container"
     },
     {
@@ -111,13 +127,14 @@
           "parameters": [
             {
               "name": "X-N8N-Signature",
-              "value": "dev-webhook-secret"
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'ig', status: 'success', external_post_id: $json.id || null, response_summary: 'Published to Instagram successfully' }) }}"
+        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'ig', status: 'success', external_post_id: $json.id || null, response_summary: 'Published to Instagram successfully' }) }}",
+        "options": {}
       },
       "id": "report-ig-success",
       "name": "Report IG Success",
@@ -134,19 +151,20 @@
           "parameters": [
             {
               "name": "X-N8N-Signature",
-              "value": "dev-webhook-secret"
+              "value": "={{ $env.N8N_WEBHOOK_SECRET }}"
             }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'ig', status: 'failed', response_summary: $json.error?.message || 'Instagram API error' }) }}"
+        "jsonBody": "={{ JSON.stringify({ content_id: $('Webhook Trigger').item.json.body.content_id, platform: 'ig', status: 'failed', response_summary: ($json.error && $json.error.message) || $json.message || 'Instagram API error' }) }}",
+        "options": {}
       },
       "id": "report-ig-failure",
       "name": "Report IG Failure",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1050, 450]
+      "position": [1250, 450]
     }
   ],
   "connections": {
@@ -166,12 +184,19 @@
     },
     "IG Create Media Container": {
       "main": [
+        [{ "node": "Wait for IG Container", "type": "main", "index": 0 }],
+        [{ "node": "Report IG Failure", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait for IG Container": {
+      "main": [
         [{ "node": "IG Publish Media", "type": "main", "index": 0 }]
       ]
     },
     "IG Publish Media": {
       "main": [
-        [{ "node": "Report IG Success", "type": "main", "index": 0 }]
+        [{ "node": "Report IG Success", "type": "main", "index": 0 }],
+        [{ "node": "Report IG Failure", "type": "main", "index": 0 }]
       ]
     }
   },

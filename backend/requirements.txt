@@ -16,6 +16,9 @@ pydantic-settings>=2.7.0
 # HTTP Client (for n8n webhook)
 httpx>=0.28.0
 
+# Object storage (MinIO / S3-compatible)
+minio>=7.2.0
+
 # Security (預留)
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
@@ -25,6 +28,7 @@ pytest>=8.0.0
 pytest-asyncio>=0.24.0
 pytest-cov>=6.0.0
 httpx  # TestClient
+aiosqlite>=0.20.0  # in-memory async DB for tests
 
 # Dev
 python-dotenv>=1.0.0

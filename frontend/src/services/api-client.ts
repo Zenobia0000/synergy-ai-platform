@@ -51,7 +51,26 @@ async function request<T>(
     return { success: true, data: null, error: null };
   }
 
-  const json: ApiResponse<T> = await response.json();
+  // Parse JSON defensively — a 5xx may return HTML/text and would
+  // otherwise blow up with a SyntaxError that the UI cannot translate
+  // into a friendly message.
+  let json: ApiResponse<T> | null = null;
+  try {
+    json = (await response.json()) as ApiResponse<T>;
+  } catch {
+    if (!response.ok) {
+      throw new ApiError(
+        "伺服器發生未預期的錯誤，請稍後再試",
+        "server_error",
+        response.status
+      );
+    }
+    throw new ApiError(
+      "伺服器回應格式無效",
+      "invalid_response",
+      response.status
+    );
+  }
 
   if (!response.ok || !json.success) {
     throw new ApiError(

@@ -33,21 +33,37 @@ command -v node >/dev/null 2>&1  || fail "Node.js 未安裝"
 ok "Node.js $(node --version)"
 
 if [ ! -d "$PROJECT_ROOT/.venv" ]; then
-  fail "Python 虛擬環境不存在，請先建立 .venv"
+  fail "Python 虛擬環境不存在，請先執行: uv venv .venv && uv pip install -r backend/requirements.txt"
 fi
 ok "Python 虛擬環境存在"
 
 # --------------------------------------------------
-# 2. 啟動 PostgreSQL (Docker)
+# 1.5 檢查 backend/.env (validate_runtime 需要非空 secrets)
 # --------------------------------------------------
-log "檢查 PostgreSQL..."
+if [ ! -f "$PROJECT_ROOT/backend/.env" ]; then
+  fail "backend/.env 不存在 — 請執行: cp backend/.env.example backend/.env 然後填入 N8N_WEBHOOK_SECRET 與 SECRET_KEY"
+fi
+if grep -q "N8N_WEBHOOK_SECRET=your-webhook-secret-here" "$PROJECT_ROOT/backend/.env"; then
+  fail "backend/.env 仍是預設 placeholder — 請編輯並填入真實的 N8N_WEBHOOK_SECRET / SECRET_KEY"
+fi
+if grep -qE "^SECRET_KEY=(change-me-in-production)?$" "$PROJECT_ROOT/backend/.env"; then
+  fail "backend/.env 的 SECRET_KEY 仍是預設值或為空 — 請填入真實值"
+fi
+ok "backend/.env 已設定"
 
-if docker ps --format '{{.Names}}' | grep -q content_distributor_db; then
-  ok "PostgreSQL 已在運行"
-else
-  log "啟動 PostgreSQL..."
-  docker compose up -d postgres
-  # 等待 healthy
+# --------------------------------------------------
+# 2. 啟動 PostgreSQL + n8n (Docker)
+# --------------------------------------------------
+log "檢查 Docker 基礎設施 (postgres + n8n)..."
+
+NEED_INFRA=0
+docker ps --format '{{.Names}}' | grep -q content_distributor_db || NEED_INFRA=1
+docker ps --format '{{.Names}}' | grep -q content_distributor_n8n || NEED_INFRA=1
+
+if [ "$NEED_INFRA" -eq 1 ]; then
+  log "啟動 postgres + n8n..."
+  docker compose up -d postgres n8n
+  # 等待 postgres healthy
   for i in $(seq 1 15); do
     if docker exec content_distributor_db pg_isready -U postgres >/dev/null 2>&1; then
       break
@@ -55,46 +71,50 @@ else
     sleep 1
   done
   if docker exec content_distributor_db pg_isready -U postgres >/dev/null 2>&1; then
-    ok "PostgreSQL 啟動成功"
+    ok "PostgreSQL + n8n 啟動成功"
   else
     fail "PostgreSQL 啟動逾時"
   fi
+else
+  ok "PostgreSQL + n8n 已在運行"
 fi
 
 # --------------------------------------------------
 # 3. 執行 Alembic migration (如有新的)
 # --------------------------------------------------
 log "檢查資料庫 migration..."
+# shellcheck disable=SC1091
 source "$PROJECT_ROOT/.venv/Scripts/activate" 2>/dev/null || source "$PROJECT_ROOT/.venv/bin/activate"
 cd "$PROJECT_ROOT/backend"
-alembic upgrade head 2>&1 | tail -1
+if ! alembic upgrade head; then
+  fail "Alembic migration 失敗 — 檢查上方錯誤訊息"
+fi
 ok "資料庫 migration 完成"
 
 # --------------------------------------------------
 # 4. 啟動後端 (背景)
 # --------------------------------------------------
-log "啟動 FastAPI 後端 (port 8888)..."
+log "啟動 FastAPI 後端 (port 8000)..."
 
-# 如果 8888 port 已被佔用，先停掉
-if curl -s http://localhost:8888/health >/dev/null 2>&1; then
-  warn "Port 8888 已有服務運行，跳過啟動"
+if curl -s http://localhost:8000/health >/dev/null 2>&1; then
+  warn "Port 8000 已有服務運行，跳過啟動"
 else
   cd "$PROJECT_ROOT/backend"
-  uvicorn app.main:app --reload --port 8888 &
+  uvicorn app.main:app --reload --port 8000 &
   BACKEND_PID=$!
 
   # 等待啟動
   for i in $(seq 1 10); do
-    if curl -s http://localhost:8888/health >/dev/null 2>&1; then
+    if curl -s http://localhost:8000/health >/dev/null 2>&1; then
       break
     fi
     sleep 1
   done
 
-  if curl -s http://localhost:8888/health >/dev/null 2>&1; then
+  if curl -s http://localhost:8000/health >/dev/null 2>&1; then
     ok "FastAPI 後端啟動成功 (PID: $BACKEND_PID)"
   else
-    fail "FastAPI 後端啟動失敗"
+    fail "FastAPI 後端啟動失敗 — 檢查 backend/.env 的 secrets 是否填妥"
   fi
 fi
 
@@ -104,7 +124,7 @@ fi
 cd "$PROJECT_ROOT/frontend"
 if [ ! -d "node_modules" ]; then
   log "安裝前端依賴..."
-  npm install --legacy-peer-deps
+  npm install
   ok "前端依賴安裝完成"
 fi
 
@@ -117,9 +137,9 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  開發環境就緒！${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo -e "  前端:    ${CYAN}http://localhost:3000${NC}"
-echo -e "  後端:    ${CYAN}http://localhost:8888${NC}"
-echo -e "  API 文檔: ${CYAN}http://localhost:8888/api/v1/docs${NC}"
-echo -e "  n8n:     ${CYAN}http://localhost:5678${NC} (需另外啟動)"
+echo -e "  後端:    ${CYAN}http://localhost:8000${NC}"
+echo -e "  API 文檔: ${CYAN}http://localhost:8000/api/v1/docs${NC}"
+echo -e "  n8n:     ${CYAN}http://localhost:5678${NC}"
 echo ""
 echo -e "  按 ${YELLOW}Ctrl+C${NC} 停止前端，後端會一起停止"
 echo ""

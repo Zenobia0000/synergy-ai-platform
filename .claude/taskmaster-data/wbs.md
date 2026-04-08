@@ -1,7 +1,7 @@
 # WBS - Personal Content Distributor v2
 
 **建立日期:** 2026-03-19
-**最後更新:** 2026-03-20
+**最後更新:** 2026-04-08
 **開發模式:** MVP
 **專案描述:** n8n 個人品牌內容分發平台 — Web 介面管理多平台貼文發佈與監控
 
@@ -32,6 +32,38 @@
 | 2.5 | Webhook 回報 API (n8n → Backend) | ✅ 完成 | 高 | 2.1 | 2h | 已在 1.5 完成 webhooks.py |
 | 2.6 | 排程觸發機制 | ✅ 完成 | 高 | 2.4, 2.5 | 2h | 30s 輪詢 + n8n webhook 觸發 |
 | 2.7 | 發佈狀態即時更新 | ✅ 完成 | 高 | 2.5 | 2h | React Query 10s 輪詢已實作 |
+
+### Phase 2.5: Phase 3 前置修復（Code Review 必修項，2026-04-08）
+
+| # | 任務 | 狀態 | 優先級 | 依賴 | 預估 | 備註 |
+|---|------|------|--------|------|------|------|
+| 2.8 | C1: Webhook HMAC + secret fail-fast | ✅ 完成 | 高 | 2.5 | 0.5h | hmac.compare_digest + validate_runtime() |
+| 2.9 | C2: Scheduler 競爭條件修復 | ✅ 完成 | 高 | 2.6 | 0.5h | UPDATE...RETURNING 原子 claim + retry cap |
+| 2.10 | C3: 後端最小測試套件（15 tests） | ✅ 完成 | 高 | 2.1~2.7 | 1.5h | pytest + httpx + aiosqlite，覆蓋率 66% |
+| 2.11 | H1: /schedule Pydantic ScheduleRequest | ✅ 完成 | 高 | 2.1 | 0.2h | 取代手寫 dict 解析 |
+| 2.12 | H2: delete_content 204 status_code 修復 | ✅ 完成 | 中 | 2.1 | 0.2h | 錯誤路徑改 Response/JSONResponse |
+| 2.13 | H4: PublishLog (content_id, platform) UNIQUE | ✅ 完成 | 高 | 2.5 | 0.4h | model + alembic migration + idempotent webhook |
+| 2.14 | H5: api-client 防禦性 JSON parse | ✅ 完成 | 中 | 2.2 | 0.2h | 5xx HTML 不再炸 SyntaxError |
+| 2.15 | 跨方言 connect_args 修正 | ✅ 完成 | 中 | C3 | 0.1h | sqlite vs asyncpg 差異 |
+| 2.16 | 套用 Alembic migration 到 dev DB | ✅ 完成 | 高 | 2.13 | 0.1h | start-dev 腳本內含 alembic upgrade head |
+| 2.17 | 修復 dev 啟動腳本 | ✅ 完成 | 中 | - | 0.5h | port 8000、.env 檢查、n8n 一併啟動、stop 改用 PID by port |
+| 2.18 | 移除 lovable-tagger + 修 vite proxy port | ✅ 完成 | 中 | - | 0.2h | 解決 vite 8 peer dep 衝突 + proxy 8888→8000 |
+| 2.19 | hooks 移除 stdout 污染 | ✅ 完成 | 低 | - | 0.2h | pre-tool-use / post-write 改寫 log 檔，消除 hook error |
+
+### Phase 2.6: Instagram 端到端整合 (2026-04-08)
+
+| # | 任務 | 狀態 | 優先級 | 依賴 | 預估 | 備註 |
+|---|------|------|--------|------|------|------|
+| 2.20 | n8n IG workflow 修正 | ✅ 完成 | 高 | 2.4 | 0.6h | graph.facebook→graph.instagram、Wait 5s、error onError 連線、N8N_BLOCK_ENV_ACCESS_IN_NODE=false |
+| 2.21 | Backend /publish 觸發 n8n bug 修復 | ✅ 完成 | 高 | 2.4 | 0.4h | 加 BackgroundTasks → publish_content_now，否則 status 卡 publishing |
+| 2.22 | 完整 E2E 驗證 IG 發佈 | ✅ 完成 | 高 | 2.20, 2.21 | 0.3h | UI → API → n8n → IG → callback → status=success |
+| 2.23 | docker-compose 注入 IG 與 webhook 環境變數 | ✅ 完成 | 高 | 2.20 | 0.1h | IG_USER_ID, IG_ACCESS_TOKEN, N8N_WEBHOOK_SECRET |
+| 2.24 | MinIO 物件儲存整合 | ✅ 完成 | 中 | - | 0.5h | docker-compose 加 minio + minio-init bucket auto-create |
+| 2.25 | Backend upload + proxy endpoints | ✅ 完成 | 中 | 2.24 | 0.6h | POST /uploads/image (multipart→MinIO), GET /uploads/{key} (stream proxy) |
+| 2.26 | Frontend file picker UI | ✅ 完成 | 中 | 2.25 | 0.3h | CreateContent 圖片欄位整合上傳按鈕 |
+| 2.27 | ngrok static domain 設定 | ✅ 完成 | 中 | 2.25 | 0.3h | PUBLIC_BASE_URL 注入 backend |
+| 2.28 | 圖片預覽 ngrok interstitial 修復 | ✅ 完成 | 中 | 2.26 | 0.3h | DB 存相對 URL，trigger n8n 時才補絕對前綴 |
+| 2.29 | 允許刪除失敗貼文 | ✅ 完成 | 低 | - | 0.1h | DELETABLE_STATUSES + ContentCard menu |
 
 ### Phase 3: 多平台擴展 (3-5 天)
 
@@ -81,6 +113,8 @@
 | M0: 專案初始化 | 2026-03-19 | 1.1, 1.2 | ✅ 完成 |
 | M1: 基礎架構就緒 | 2026-03-26 | 1.3~1.7 | ✅ 完成 |
 | M2: 最小閉環 (IG 發佈) | 2026-04-02 | 2.1~2.7 | ✅ 完成 |
+| M2.5: Phase 3 前置修復 | 2026-04-08 | 2.8~2.19 | ✅ 完成 (12/12) |
+| M2.6: Instagram E2E 整合 | 2026-04-08 | 2.20~2.29 | ✅ 完成 (10/10) — IG 發佈全流程通過 |
 | M3: 多平台 MVP | 2026-04-12 | 3.1~3.6 | ⏳ 待處理 |
 | M4: 監控功能 | 2026-04-22 | 4.1~4.5 | ⏳ 待處理 |
 | M5: MVP 完成 | 2026-04-30 | 5.1~5.6 | ⏳ 待處理 |

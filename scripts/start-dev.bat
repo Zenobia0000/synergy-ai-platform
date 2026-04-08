@@ -22,11 +22,28 @@ echo [OK]   Docker Desktop running
 
 REM === 2. Check .venv ===
 if not exist "%PROJECT_ROOT%\.venv\Scripts\activate.bat" (
-    echo [FAIL] .venv not found
+    echo [FAIL] .venv not found - run: uv venv .venv ^&^& uv pip install -r backend/requirements.txt
     pause
     exit /b 1
 )
 echo [OK]   Python venv exists
+
+REM === 2.5. Check backend/.env (required secrets) ===
+if not exist "%PROJECT_ROOT%\backend\.env" (
+    echo [FAIL] backend\.env not found
+    echo        Run: copy backend\.env.example backend\.env
+    echo        Then edit backend\.env and set N8N_WEBHOOK_SECRET and SECRET_KEY
+    pause
+    exit /b 1
+)
+findstr /C:"N8N_WEBHOOK_SECRET=your-webhook-secret-here" "%PROJECT_ROOT%\backend\.env" >nul 2>&1
+if %errorlevel%==0 (
+    echo [FAIL] backend\.env still contains default placeholder secrets
+    echo        Edit backend\.env and replace N8N_WEBHOOK_SECRET / SECRET_KEY with real values
+    pause
+    exit /b 1
+)
+echo [OK]   backend\.env exists with non-default secrets
 
 REM === 3. Start PostgreSQL + n8n (skip if running) ===
 echo.
@@ -57,8 +74,8 @@ echo [OK]   Migration done
 
 REM === 5. Start backend in background window ===
 echo.
-echo [INFO] Starting FastAPI backend (port 8888)...
-start "FastAPI-Backend" /min cmd /k "cd /d %PROJECT_ROOT%\backend && call %PROJECT_ROOT%\.venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8888"
+echo [INFO] Starting FastAPI backend (port 8000)...
+start "FastAPI-Backend" /min cmd /k "cd /d %PROJECT_ROOT%\backend && call %PROJECT_ROOT%\.venv\Scripts\activate.bat && uvicorn app.main:app --reload --port 8000"
 timeout /t 3 /nobreak >nul
 echo [OK]   Backend started (minimized window)
 
@@ -67,7 +84,7 @@ cd /d "%PROJECT_ROOT%\frontend"
 if not exist "node_modules" (
     echo.
     echo [INFO] Installing frontend deps...
-    npm install --legacy-peer-deps
+    npm install
 )
 
 REM === 7. Start frontend in background window ===
@@ -84,8 +101,8 @@ echo   Dev environment ready!
 echo ========================================
 echo.
 echo   Frontend:  http://localhost:3000
-echo   Backend:   http://localhost:8888
-echo   API Docs:  http://localhost:8888/api/v1/docs
+echo   Backend:   http://localhost:8000
+echo   API Docs:  http://localhost:8000/api/v1/docs
 echo   n8n:       http://localhost:5678
 echo.
 echo   Stop all:  scripts\stop-dev.bat

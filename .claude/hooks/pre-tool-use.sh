@@ -3,18 +3,19 @@
 # TaskMaster Pre Tool Use Hook
 # 在工具使用前檢查 TaskMaster 狀態並提供上下文
 
-set -e
+# 不使用 set -e：hook 不應因小錯而失敗
+# stdout 必須保持安靜，否則 Claude Code 會把 log 訊息當成 hook 輸出
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" || SCRIPT_DIR="."
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null)}" || PROJECT_ROOT="."
 CLAUDE_DIR="$PROJECT_ROOT/.claude"
 
 # 確保 logs 目錄存在
-mkdir -p "$CLAUDE_DIR/logs" 2>/dev/null
+mkdir -p "$CLAUDE_DIR/logs" 2>/dev/null || true
 
-# 日誌函數
+# 日誌函數（只寫檔案，不污染 stdout）
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$CLAUDE_DIR/logs/hooks.log"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$CLAUDE_DIR/logs/hooks.log" 2>/dev/null || true
 }
 
 # 從 stdin 讀取 hook JSON 輸入
@@ -31,7 +32,7 @@ fi
 
 log "🪝 TaskMaster Pre Tool Use Hook 觸發: $TOOL_NAME"
 
-# 如果 TaskMaster 已初始化，提供當前狀態上下文
+# 如果 TaskMaster 已初始化，提供當前狀態上下文（只寫 log，不污染 stdout）
 if [ -f "$CLAUDE_DIR/taskmaster-data/project.json" ]; then
     log "📊 TaskMaster 已初始化，提供上下文資訊"
 
@@ -39,14 +40,13 @@ if [ -f "$CLAUDE_DIR/taskmaster-data/project.json" ]; then
     if command -v jq >/dev/null 2>&1 && [ -f "$CLAUDE_DIR/taskmaster-data/project.json" ]; then
         PROJECT_NAME=$(jq -r '.name // "未知專案"' "$CLAUDE_DIR/taskmaster-data/project.json")
 
-        echo "📋 TaskMaster 當前狀態:"
-        echo "   專案名稱: $PROJECT_NAME"
+        log "📋 TaskMaster 當前狀態: 專案名稱=$PROJECT_NAME"
 
         # 檢查是否有待審查的文檔
         if [ -d "$PROJECT_ROOT/docs" ]; then
             PENDING_DOCS=$(find "$PROJECT_ROOT/docs" -name "*.md" -newer "$CLAUDE_DIR/taskmaster-data/project.json" 2>/dev/null | wc -l)
             if [ "$PENDING_DOCS" -gt 0 ]; then
-                echo "   🔍 待審查文檔: $PENDING_DOCS 個"
+                log "   🔍 待審查文檔: $PENDING_DOCS 個"
             fi
         fi
     fi
@@ -58,8 +58,7 @@ case "$TOOL_NAME" in
         log "📝 Write 工具即將使用"
         # 檢查是否為文檔目錄寫入
         if [[ "$TOOL_ARGS" == *"docs/"* ]]; then
-            log "📄 即將寫入專案文檔"
-            echo "💡 提示: 文檔寫入後將觸發 TaskMaster 審查流程"
+            log "📄 即將寫入專案文檔 - 提示: 文檔寫入後將觸發 TaskMaster 審查流程"
         fi
         ;;
 
@@ -83,8 +82,7 @@ case "$TOOL_NAME" in
         log "🤖 Task 工具即將使用 (智能體委派)"
         # 提供智能體協調上下文
         if [ -f "$CLAUDE_DIR/taskmaster-data/project.json" ]; then
-            echo "🤖 TaskMaster Hub 協調模式啟用"
-            echo "   所有智能體委派將記錄在 WBS Todo List 中"
+            log "🤖 TaskMaster Hub 協調模式啟用 - 所有智能體委派將記錄在 WBS Todo List 中"
         fi
         ;;
 esac

@@ -3,18 +3,19 @@
 # TaskMaster Post Write Hook
 # 當 Claude Code 寫入檔案後觸發，特別關注文檔生成
 
-set -e
+# 不使用 set -e：hook 不應因小錯而失敗
+# stdout 必須保持安靜，否則 Claude Code 會把 log 訊息當成 hook 輸出
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null)" || SCRIPT_DIR="."
+PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null)}" || PROJECT_ROOT="."
 CLAUDE_DIR="$PROJECT_ROOT/.claude"
 
 # 確保 logs 目錄存在
-mkdir -p "$CLAUDE_DIR/logs" 2>/dev/null
+mkdir -p "$CLAUDE_DIR/logs" 2>/dev/null || true
 
-# 日誌函數
+# 日誌函數（只寫檔案，不污染 stdout）
 log() {
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$CLAUDE_DIR/logs/hooks.log"
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$CLAUDE_DIR/logs/hooks.log" 2>/dev/null || true
 }
 
 # 從 stdin 讀取 hook JSON 輸入
@@ -47,25 +48,8 @@ if [[ "$FILE_PATH" == *.md ]]; then
                 node "$CLAUDE_DIR/taskmaster.js" --hook-trigger=document-generated --file="$FILE_PATH"
             fi
 
-            # 顯示駕駛員審查提示
-            cat << EOF
-
-┌──────────────────────────────────────────────────────────┐
-│  📄 文檔生成完成通知                                      │
-│                                                          │
-│  檔案: $(basename "$FILE_PATH")                          │
-│  路徑: $FILE_PATH                           │
-│                                                          │
-│  🔍 駕駛員審查檢查點                                      │
-│  請檢查生成的文檔內容，確認品質後：                      │
-│                                                          │
-│  ✅ 批准: /task-review approve                           │
-│  🔄 修改: /task-review revise                            │
-│  ⏸️ 暫停: /task-review pause                             │
-│                                                          │
-└──────────────────────────────────────────────────────────┘
-
-EOF
+            # 紀錄駕駛員審查提示（不污染 stdout — 由 Claude 在對話中提示使用者）
+            log "📄 文檔生成完成通知: $(basename "$FILE_PATH") - 待審查 (/task-review approve|revise|pause)"
         fi
     fi
 
@@ -89,19 +73,7 @@ if [[ "$FILE_PATH" == *"taskmaster-data/wbs.md"* ]]; then
     mkdir -p "$CLAUDE_DIR/taskmaster-data" 2>/dev/null
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] WBS 更新" >> "$WBS_LOG"
 
-    cat << EOF
-
-┌──────────────────────────────────────────────────────────┐
-│  📋 WBS 任務清單已同步                                    │
-│                                                          │
-│  檔案: .claude/taskmaster-data/wbs.md                    │
-│  時間: $(date '+%Y-%m-%d %H:%M:%S')                     │
-│                                                          │
-│  📊 /task-status  查看最新狀態                            │
-│  ➡️  /task-next    取得下一個任務                          │
-└──────────────────────────────────────────────────────────┘
-
-EOF
+    log "📋 WBS 任務清單已同步: .claude/taskmaster-data/wbs.md (use /task-status or /task-next)"
 fi
 
 # 檢查是否為 TaskMaster 核心檔案更新

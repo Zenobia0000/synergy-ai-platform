@@ -6,11 +6,20 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1 import api_router
 from app.core.config import settings
+from app.services import storage_service
 from app.services.scheduler_service import scheduler_loop
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail-fast: validate critical secrets before accepting requests
+    settings.validate_runtime()
+    # Best-effort: ensure MinIO bucket exists (no-op if minio-init already created it)
+    try:
+        await storage_service.ensure_bucket()
+    except Exception:
+        # MinIO may not be running in tests; don't block startup
+        pass
     # Start scheduler background task
     task = asyncio.create_task(scheduler_loop())
     yield

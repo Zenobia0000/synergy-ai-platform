@@ -1,14 +1,20 @@
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Response
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.schemas.content import ContentCreate, ContentResponse, ContentUpdate
+from app.schemas.content import (
+    ContentCreate,
+    ContentResponse,
+    ContentUpdate,
+    ScheduleRequest,
+)
 from app.schemas.response import error_response, paginated_response, success_response
 from app.services import content_service
+from app.services.scheduler_service import publish_content_now
 
 router = APIRouter()
 
@@ -65,7 +71,10 @@ async def update_content(
     return success_response(ContentResponse.model_validate(updated).model_dump(mode="json"))
 
 
-@router.delete("/{content_id}", status_code=204)
+DELETABLE_STATUSES = {"draft", "failed"}
+
+
+@router.delete("/{content_id}")
 async def delete_content(
     content_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
@@ -76,20 +85,25 @@ async def delete_content(
             status_code=404,
             content=error_response("not_found", "resource_not_found", "貼文不存在"),
         )
-    if content.status != "draft":
+    if content.status not in DELETABLE_STATUSES:
         return JSONResponse(
             status_code=403,
             content=error_response(
-                "forbidden", "delete_not_allowed", "僅草稿狀態的貼文可刪除"
+                "forbidden",
+                "delete_not_allowed",
+                f"狀態 {content.status} 的貼文無法刪除（僅草稿與失敗可刪）",
             ),
         )
     await content_service.delete_content(db, content)
+    # Only the success path returns 204 — error paths above are JSON bodies
+    # with their own status codes.
+    return Response(status_code=204)
 
 
 @router.post("/{content_id}/schedule")
 async def schedule_content(
     content_id: uuid.UUID,
-    data: dict,
+    data: ScheduleRequest,
     db: AsyncSession = Depends(get_db),
 ):
     content = await content_service.get_content(db, content_id)
@@ -106,30 +120,19 @@ async def schedule_content(
             ),
         )
 
-    publish_at_str = data.get("publish_at")
-    if not publish_at_str:
-        return JSONResponse(
-            status_code=400,
-            content=error_response(
-                "invalid_request_error", "parameter_missing", "缺少 publish_at", param="publish_at"
-            ),
-        )
-
-    try:
-        publish_at = datetime.fromisoformat(publish_at_str)
-    except (ValueError, TypeError):
-        return JSONResponse(
-            status_code=400,
-            content=error_response(
-                "invalid_request_error", "parameter_invalid", "publish_at 格式無效", param="publish_at"
-            ),
-        )
+    publish_at = data.publish_at
+    # Normalize naive datetimes to UTC so the comparison is unambiguous.
+    if publish_at.tzinfo is None:
+        publish_at = publish_at.replace(tzinfo=timezone.utc)
 
     if publish_at <= datetime.now(timezone.utc):
         return JSONResponse(
             status_code=400,
             content=error_response(
-                "invalid_request_error", "invalid_schedule_time", "排程時間必須為未來時間"
+                "invalid_request_error",
+                "invalid_schedule_time",
+                "排程時間必須為未來時間",
+                param="publish_at",
             ),
         )
 
@@ -162,6 +165,7 @@ async def cancel_schedule(
 @router.post("/{content_id}/publish", status_code=202)
 async def publish_content(
     content_id: uuid.UUID,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     content = await content_service.get_content(db, content_id)
@@ -179,6 +183,11 @@ async def publish_content(
             ),
         )
     updated = await content_service.set_publishing(db, content)
+    # Fire-and-forget trigger to n8n after the response is sent. We use
+    # BackgroundTasks so the HTTP request returns immediately (202) and
+    # the user gets instant feedback; status is updated asynchronously
+    # by the webhook callback when n8n finishes publishing.
+    background_tasks.add_task(publish_content_now, content_id)
     return success_response(
         ContentResponse.model_validate(updated).model_dump(mode="json"),
         message="發佈已觸發，請輪詢取得最新狀態",

@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Text, Integer, DateTime, ForeignKey, JSON, func
+from sqlalchemy import (
+    JSON,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -37,6 +46,13 @@ class ContentQueue(Base):
 
 class PublishLog(Base):
     __tablename__ = "publish_logs"
+    __table_args__ = (
+        UniqueConstraint(
+            "content_id",
+            "platform",
+            name="uq_publish_logs_content_platform",
+        ),
+    )
 
     log_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     content_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("content_queue.id"))

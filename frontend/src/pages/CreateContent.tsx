@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Platform, PLATFORM_LABELS } from '@/types/content';
 import { useContent, useCreateContent, useUpdateContent, usePublishContent, useScheduleContent } from '@/hooks/use-contents';
+import { uploadImage } from '@/services/upload-api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowLeft, Calendar, Image, Send, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, Send, Save, Loader2, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
@@ -32,11 +33,42 @@ export default function CreateContent() {
   const [title, setTitle] = useState('');
   const [masterCaption, setMasterCaption] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedPlatforms, setSelectedPlatforms] = useState<Platform[]>([]);
   const [publishAt, setPublishAt] = useState('');
   const [platformCaptions, setPlatformCaptions] = useState<Partial<Record<Platform, string>>>({});
   const [activeTab, setActiveTab] = useState('content');
   const [initialized, setInitialized] = useState(false);
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so selecting the same file again still triggers onChange
+    e.target.value = '';
+
+    // Client-side guards mirroring the backend
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      toast.error('僅支援 JPG / PNG 格式');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast.error(`圖片大小 ${(file.size / 1024 / 1024).toFixed(1)} MB 超過 8 MB 上限`);
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const result = await uploadImage(file);
+      setImageUrl(result.url);
+      toast.success('圖片上傳成功');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '上傳失敗';
+      toast.error(message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   // Load existing content for edit mode
   useEffect(() => {
@@ -212,19 +244,41 @@ export default function CreateContent() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="image">圖片網址</Label>
+                  <Label htmlFor="image">圖片</Label>
                   <div className="flex gap-2">
                     <Input
                       id="image"
                       value={imageUrl}
                       onChange={e => setImageUrl(e.target.value)}
-                      placeholder="https://..."
+                      placeholder="貼上 URL 或點右側上傳本機檔案"
                       className="bg-background flex-1"
                     />
-                    <Button variant="outline" size="icon" className="shrink-0">
-                      <Image className="w-4 h-4" />
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png"
+                      className="hidden"
+                      onChange={handleFileSelected}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      disabled={isUploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      title="上傳本機圖片"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Upload className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    支援 JPG/PNG ≤ 8 MB；上傳後會存到 MinIO 並產生公開 URL
+                  </p>
                   {imageUrl && (
                     <div className="mt-3 rounded-lg overflow-hidden border border-border/40 aspect-video">
                       <img src={imageUrl} alt="預覽" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />

@@ -54,6 +54,9 @@ export function ContentCard({ content, onEdit, onDelete, onPublish }: ContentCar
               {(content.status === 'failed' || content.status === 'partial_success') && (
                 <DropdownMenuItem onClick={onPublish}>重新發佈</DropdownMenuItem>
               )}
+              {content.status === 'failed' && (
+                <DropdownMenuItem className="text-destructive" onClick={onDelete}>刪除</DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
