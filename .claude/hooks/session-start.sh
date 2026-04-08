@@ -67,13 +67,39 @@ fi
 # 確保 logs 目錄存在
 mkdir -p "$CLAUDE_DIR/logs" 2>/dev/null
 
-# 日誌函數（跨平台兼容）
+# 日誌函數（跨平台兼容、只寫檔案不污染 stdout）
 log() {
     local timestamp="[$(date '+%Y-%m-%d %H:%M:%S' 2>/dev/null || echo '????-??-?? ??:??:??')]"
-    echo "$timestamp $1" | tee -a "$CLAUDE_DIR/logs/hooks.log" 2>/dev/null || echo "$timestamp $1"
+    echo "$timestamp $1" >> "$CLAUDE_DIR/logs/hooks.log" 2>/dev/null || true
 }
 
 log "🪝 TaskMaster Session Start Hook 觸發 (Platform: $PLATFORM)"
+
+# ============================================================================
+# 時間追蹤：歸檔上一次 Session 的時間
+# ============================================================================
+TIMELOG_DIR="$CLAUDE_DIR/taskmaster-data"
+SNAPSHOT_FILE="$TIMELOG_DIR/.session-snapshot"
+TIMELOG_FILE="$TIMELOG_DIR/timelog.jsonl"
+
+if [ -f "$SNAPSHOT_FILE" ]; then
+    # 讀取上次 session 的快照
+    snapshot=$(cat "$SNAPSHOT_FILE" 2>/dev/null)
+    if [ -n "$snapshot" ] && command -v jq >/dev/null 2>&1; then
+        snap_duration=$(echo "$snapshot" | jq -r '.duration_ms // 0' 2>/dev/null)
+        if [ "$snap_duration" -gt 0 ] 2>/dev/null; then
+            # 追加到 timelog.jsonl（不覆蓋，追加）
+            echo "$snapshot" >> "$TIMELOG_FILE" 2>/dev/null
+            log "⏱️ 上次 Session 時間已歸檔 (${snap_duration}ms)"
+        fi
+    fi
+    # 清除快照
+    rm -f "$SNAPSHOT_FILE" 2>/dev/null
+fi
+
+# 記錄本次 session 開始時間
+mkdir -p "$TIMELOG_DIR" 2>/dev/null
+date '+%H:%M' > "$TIMELOG_DIR/.session-start" 2>/dev/null
 
 # 檢查是否存在 CLAUDE_TEMPLATE.md
 if [ -f "$PROJECT_ROOT/CLAUDE_TEMPLATE.md" ]; then

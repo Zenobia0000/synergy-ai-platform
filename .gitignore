@@ -38,3 +38,7 @@ htmlcov/
 # Debug / 一次性除錯產出
 exec*.txt
 scripts/_parse_exec.py
+
+# TaskMaster runtime state（每次啟動會變，不應追蹤）
+.claude/taskmaster-data/.session-snapshot
+.claude/taskmaster-data/.session-start
