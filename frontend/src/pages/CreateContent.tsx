@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowLeft, Calendar, Send, Save, Loader2, Upload } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PlatformPreview } from '@/components/PlatformPreview';
 import { toast } from 'sonner';
 
 const platformOptions: { value: Platform; label: string; maxLen?: number }[] = [
@@ -280,8 +281,13 @@ export default function CreateContent() {
                     支援 JPG/PNG ≤ 8 MB；上傳後會存到 MinIO 並產生公開 URL
                   </p>
                   {imageUrl && (
-                    <div className="mt-3 rounded-lg overflow-hidden border border-border/40 aspect-video">
-                      <img src={imageUrl} alt="預覽" className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = 'none')} />
+                    <div className="mt-3 rounded-lg overflow-hidden border border-border/40 bg-muted/20 flex items-center justify-center max-h-[360px]">
+                      <img
+                        src={imageUrl}
+                        alt="預覽"
+                        className="max-h-[360px] max-w-full object-contain"
+                        onError={e => (e.currentTarget.style.display = 'none')}
+                      />
                     </div>
                   )}
                 </div>
@@ -370,39 +376,45 @@ export default function CreateContent() {
 
         {/* Preview Tab */}
         <TabsContent value="preview" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {selectedPlatforms.length === 0 ? (
-              <div className="col-span-full bg-card rounded-xl border border-border/40 p-10 text-center">
-                <p className="text-muted-foreground">請先選擇目標平台以預覽</p>
-              </div>
-            ) : (
-              selectedPlatforms.map(p => {
-                const opt = platformOptions.find(o => o.value === p)!;
-                const caption = platformCaptions[p] || masterCaption;
-                return (
-                  <div key={p} className="bg-card rounded-xl border border-border/40 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-border/30 bg-muted/30">
-                      <span className="text-sm font-medium">{opt.label}</span>
-                    </div>
-                    {imageUrl && (
-                      <div className="aspect-video">
-                        <img src={imageUrl} alt="" className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <div className="p-4 space-y-2">
-                      <p className="text-sm font-semibold font-display">{title || '（未填寫標題）'}</p>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                        {caption || '（未填寫文案）'}
-                      </p>
-                      {p === 'x' && caption.length > 280 && (
-                        <p className="text-xs text-destructive">超過 280 字元限制</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+          {selectedPlatforms.length === 0 ? (
+            <div className="bg-card rounded-xl border border-border/40 p-10 text-center">
+              <p className="text-muted-foreground">請先選擇目標平台以預覽</p>
+            </div>
+          ) : (
+            <div className="bg-card rounded-xl border border-border/40 p-6">
+              <Tabs defaultValue={selectedPlatforms[0]} className="flex flex-col items-center gap-4">
+                <TabsList className="bg-muted">
+                  {selectedPlatforms.map(p => {
+                    const opt = platformOptions.find(o => o.value === p)!;
+                    return (
+                      <TabsTrigger key={p} value={p}>
+                        {opt.label}
+                      </TabsTrigger>
+                    );
+                  })}
+                </TabsList>
+                <p className="text-xs text-muted-foreground">
+                  預覽僅為示意，實際呈現以各平台為準
+                </p>
+                {selectedPlatforms.map(p => (
+                  <TabsContent key={p} value={p} className="w-full mt-0 flex justify-center">
+                    <PlatformPreview
+                      content={{
+                        title,
+                        master_caption: masterCaption,
+                        image_url: imageUrl || null,
+                        fb_caption: platformCaptions.fb ?? null,
+                        ig_caption: platformCaptions.ig ?? null,
+                        x_caption: platformCaptions.x ?? null,
+                        line_message: platformCaptions.line ?? null,
+                      }}
+                      platform={p}
+                    />
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

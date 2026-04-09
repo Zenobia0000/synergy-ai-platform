@@ -1,29 +1,46 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ContentCard } from '@/components/ContentCard';
+import { StatusBadge } from '@/components/StatusBadge';
+import { PlatformTag } from '@/components/PlatformTag';
+import { ContentPreviewDialog } from '@/components/ContentPreviewDialog';
 import { useContents, useDeleteContent, usePublishContent } from '@/hooks/use-contents';
-import { ContentStatus } from '@/types/content';
-import { Plus, Search, Filter, Loader2 } from 'lucide-react';
+import { Content, Platform } from '@/types/content';
+import { Plus, Search, Filter, Loader2, LayoutGrid, List as ListIcon, MoreHorizontal, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 
-const statusFilters: { label: string; value: ContentStatus | 'all' }[] = [
+type PlatformFilter = Platform | 'all';
+type ViewMode = 'grid' | 'list';
+
+const platformFilters: { label: string; value: PlatformFilter }[] = [
   { label: '全部', value: 'all' },
-  { label: '草稿', value: 'draft' },
-  { label: '排程中', value: 'queued' },
-  { label: '已發佈', value: 'success' },
-  { label: '部分成功', value: 'partial_success' },
-  { label: '失敗', value: 'failed' },
+  { label: 'Facebook', value: 'fb' },
+  { label: 'Instagram', value: 'ig' },
+  { label: 'X (Twitter)', value: 'x' },
+  { label: 'LINE', value: 'line' },
 ];
+
+const VIEW_MODE_KEY = 'content-view-mode';
 
 export default function ContentManagement() {
   const navigate = useNavigate();
-  const [activeFilter, setActiveFilter] = useState<ContentStatus | 'all'>('all');
+  const [activePlatform, setActivePlatform] = useState<PlatformFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(VIEW_MODE_KEY) : null;
+    return saved === 'list' ? 'list' : 'grid';
+  });
+  const [previewContent, setPreviewContent] = useState<Content | null>(null);
 
   const { data, isLoading, isError } = useContents({
-    status: activeFilter === 'all' ? undefined : activeFilter,
     sort_by: '-created_at',
   });
 
@@ -33,6 +50,7 @@ export default function ContentManagement() {
   const contents = data?.items ?? [];
 
   const filteredContents = contents.filter(c => {
+    if (activePlatform !== 'all' && !c.platforms.includes(activePlatform)) return false;
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return c.title.toLowerCase().includes(q) || c.master_caption.toLowerCase().includes(q);
@@ -52,6 +70,24 @@ export default function ContentManagement() {
     });
   };
 
+  const switchView = (mode: ViewMode) => {
+    setViewMode(mode);
+    try {
+      localStorage.setItem(VIEW_MODE_KEY, mode);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString('zh-TW', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -60,7 +96,7 @@ export default function ContentManagement() {
           <h1 className="text-2xl font-display font-semibold text-foreground">貼文管理</h1>
           <p className="text-sm text-muted-foreground mt-1">
             管理你的跨平台內容
-            {data && <span className="ml-2">({data.total} 筆)</span>}
+            {data && <span className="ml-2">({filteredContents.length} / {data.total} 筆)</span>}
           </p>
         </div>
         <Button className="gap-2 rounded-lg shadow-sm" onClick={() => navigate('/create')}>
@@ -69,8 +105,8 @@ export default function ContentManagement() {
         </Button>
       </div>
 
-      {/* Search & Filter */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Search & Filter & View Toggle */}
+      <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -80,13 +116,13 @@ export default function ContentManagement() {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-          {statusFilters.map(f => (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 flex-1">
+          {platformFilters.map(f => (
             <button
               key={f.value}
-              onClick={() => setActiveFilter(f.value)}
+              onClick={() => setActivePlatform(f.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                activeFilter === f.value
+                activePlatform === f.value
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-accent'
               }`}
@@ -94,6 +130,30 @@ export default function ContentManagement() {
               {f.label}
             </button>
           ))}
+        </div>
+        <div className="inline-flex rounded-lg border border-border/40 bg-card p-0.5 shrink-0">
+          <button
+            onClick={() => switchView('grid')}
+            title="卡片檢視"
+            className={`p-1.5 rounded-md transition-colors ${
+              viewMode === 'grid'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => switchView('list')}
+            title="條列檢視"
+            className={`p-1.5 rounded-md transition-colors ${
+              viewMode === 'list'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            <ListIcon className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
@@ -119,21 +179,125 @@ export default function ContentManagement() {
         </div>
       )}
 
-      {/* Gallery Grid */}
-      {!isLoading && !isError && filteredContents.length > 0 && (
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
-          {filteredContents.map((content, i) => (
-            <div key={content.id} className="break-inside-avoid" style={{ animationDelay: `${i * 80}ms` }}>
-              <ContentCard
-                content={content}
-                onEdit={() => navigate(`/create?id=${content.id}`)}
-                onDelete={() => handleDelete(content.id)}
-                onPublish={() => handlePublish(content.id)}
-              />
+      {/* Grid View */}
+      {!isLoading && !isError && filteredContents.length > 0 && viewMode === 'grid' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredContents.map((content) => (
+            <ContentCard
+              key={content.id}
+              content={content}
+              onPreview={() => setPreviewContent(content)}
+              onEdit={() => navigate(`/create?id=${content.id}`)}
+              onDelete={() => handleDelete(content.id)}
+              onPublish={() => handlePublish(content.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* List View */}
+      {!isLoading && !isError && filteredContents.length > 0 && viewMode === 'list' && (
+        <div className="bg-card rounded-xl border border-border/40 overflow-hidden divide-y divide-border/40">
+          {filteredContents.map((content) => (
+            <div
+              key={content.id}
+              onClick={() => setPreviewContent(content)}
+              className="flex items-center gap-4 p-3 hover:bg-muted/30 transition-colors group cursor-pointer"
+            >
+              {/* Thumbnail */}
+              <div className="w-16 h-16 shrink-0 rounded-md overflow-hidden bg-muted/30 flex items-center justify-center">
+                {content.image_url ? (
+                  <img
+                    src={content.image_url}
+                    alt={content.title}
+                    className="w-full h-full object-cover"
+                    onError={e => (e.currentTarget.style.display = 'none')}
+                  />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground">無圖</span>
+                )}
+              </div>
+
+              {/* Title + Caption */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <StatusBadge status={content.status} />
+                  <h3 className="font-display font-semibold text-sm text-card-foreground truncate">
+                    {content.title}
+                  </h3>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">
+                  {content.master_caption}
+                </p>
+              </div>
+
+              {/* Platforms */}
+              <div className="hidden md:flex flex-wrap gap-1 max-w-[180px] justify-end">
+                {content.platforms.map(p => (
+                  <PlatformTag key={p} platform={p} />
+                ))}
+              </div>
+
+              {/* Date */}
+              {content.publish_at && (
+                <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 w-32">
+                  <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
+                  <span>{formatDate(content.publish_at)}</span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate(`/create?id=${content.id}`)}>
+                    編輯
+                  </DropdownMenuItem>
+                  {content.status === 'draft' && (
+                    <>
+                      <DropdownMenuItem onClick={() => handlePublish(content.id)}>
+                        立即發佈
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDelete(content.id)}
+                      >
+                        刪除
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {(content.status === 'failed' || content.status === 'partial_success') && (
+                    <DropdownMenuItem onClick={() => handlePublish(content.id)}>
+                      重新發佈
+                    </DropdownMenuItem>
+                  )}
+                  {content.status === 'failed' && (
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => handleDelete(content.id)}
+                    >
+                      刪除
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {/* Preview Dialog */}
+      <ContentPreviewDialog
+        content={previewContent}
+        open={!!previewContent}
+        onOpenChange={(open) => !open && setPreviewContent(null)}
+      />
     </div>
   );
 }

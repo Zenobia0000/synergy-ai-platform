@@ -15,18 +15,22 @@ interface ContentCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onPublish?: () => void;
+  onPreview?: () => void;
 }
 
-export function ContentCard({ content, onEdit, onDelete, onPublish }: ContentCardProps) {
+export function ContentCard({ content, onEdit, onDelete, onPublish, onPreview }: ContentCardProps) {
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('zh-TW', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
   return (
-    <div className="group bg-card rounded-xl overflow-hidden border border-border/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+    <div
+      onClick={onPreview}
+      className="group bg-card rounded-xl overflow-hidden border border-border/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+    >
       {content.image_url && (
-        <div className="aspect-[4/3] overflow-hidden">
+        <div className="aspect-[16/9] overflow-hidden bg-muted/30">
           <img
             src={content.image_url}
             alt={content.title}
@@ -34,50 +38,52 @@ export function ContentCard({ content, onEdit, onDelete, onPublish }: ContentCar
           />
         </div>
       )}
-      <div className="p-4 space-y-3">
+      <div className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <StatusBadge status={content.status} />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onEdit}>編輯</DropdownMenuItem>
-              {content.status === 'draft' && (
-                <>
-                  <DropdownMenuItem onClick={onPublish}>立即發佈</DropdownMenuItem>
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onEdit}>編輯</DropdownMenuItem>
+                {content.status === 'draft' && (
+                  <>
+                    <DropdownMenuItem onClick={onPublish}>立即發佈</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" onClick={onDelete}>刪除</DropdownMenuItem>
+                  </>
+                )}
+                {(content.status === 'failed' || content.status === 'partial_success') && (
+                  <DropdownMenuItem onClick={onPublish}>重新發佈</DropdownMenuItem>
+                )}
+                {content.status === 'failed' && (
                   <DropdownMenuItem className="text-destructive" onClick={onDelete}>刪除</DropdownMenuItem>
-                </>
-              )}
-              {(content.status === 'failed' || content.status === 'partial_success') && (
-                <DropdownMenuItem onClick={onPublish}>重新發佈</DropdownMenuItem>
-              )}
-              {content.status === 'failed' && (
-                <DropdownMenuItem className="text-destructive" onClick={onDelete}>刪除</DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
-        <h3 className="font-display font-semibold text-card-foreground leading-snug">
+        <h3 className="font-display font-semibold text-sm text-card-foreground leading-snug line-clamp-1">
           {content.title}
         </h3>
 
-        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
           {content.master_caption}
         </p>
 
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {content.platforms.map(p => (
             <PlatformTag key={p} platform={p} />
           ))}
         </div>
 
         {content.publish_at && (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
-            <Calendar className="w-3.5 h-3.5" strokeWidth={1.5} />
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
+            <Calendar className="w-3 h-3" strokeWidth={1.5} />
             <span>{formatDate(content.publish_at)}</span>
           </div>
         )}
