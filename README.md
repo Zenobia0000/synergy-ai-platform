@@ -1,6 +1,6 @@
 # Synergy AI Platform
 
-Synergy AI 平台 — 內部 POC monorepo，目前含兩個子模組。
+Synergy AI 平台 — 內部 POC monorepo，目前含兩個子模組。.
 
 ## 模組
 

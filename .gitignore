@@ -7,9 +7,11 @@
 
 # ── Claude Code ──
 .claude/settings.local.json
-.claude/sessions/
-.claude/taskmaster-data/
-.claude/qa-history/
+# 工具執行時的狀態檔（頻繁變動，不適合版控）
+.claude/taskmaster-data/.current-task
+.claude/taskmaster-data/.session-*
+# 個人工時紀錄
+.claude/taskmaster-data/timelog.jsonl
 
 # ── Node ──
 node_modules/

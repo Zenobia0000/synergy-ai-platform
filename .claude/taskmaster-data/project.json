@@ -1,0 +1,34 @@
+{
+  "name": "synergy-questionnaire-ai",
+  "description": "Synergy AI Module 2 POC — questionnaire-driven marketing advice for new coaches",
+  "created": "2026-04-21",
+  "mode": "完整 POC",
+  "timeline": "3-5 days",
+  "language": {
+    "backend": "Python 3.12",
+    "frontend": "TypeScript"
+  },
+  "stack": {
+    "backend": ["FastAPI", "Pydantic v2", "uv"],
+    "frontend": ["Next.js 15", "React", "Tailwind CSS"],
+    "llm": {
+      "abstraction": "LiteLLM",
+      "primary": "gemini/gemini-2.5-flash",
+      "extensible": true
+    }
+  },
+  "uiStyle": {
+    "mode": "single",
+    "primary": "apple"
+  },
+  "outputs": [
+    "health_assessment_summary",
+    "recommended_products",
+    "sales_scripts",
+    "next_actions"
+  ],
+  "deployment": "local_only",
+  "github": "skip",
+  "wbsFile": ".claude/taskmaster-data/wbs.md",
+  "prdFile": "rawdata/01_synergy_ai_prd.md"
+}
