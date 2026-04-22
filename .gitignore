@@ -1,0 +1,48 @@
+# ── Secrets / local config ──
+.env
+.env.local
+.env.*.local
+.mcp.json
+!.mcp.json.*.example
+
+# ── Claude Code ──
+.claude/settings.local.json
+.claude/sessions/
+.claude/taskmaster-data/
+.claude/qa-history/
+
+# ── Node ──
+node_modules/
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Build output ──
+dist/
+build/
+*.tsbuildinfo
+
+# ── Test / tool artifacts ──
+.playwright-mcp/
+playwright-report/
+test-results/
+coverage/
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Temp ──
+tmp/
+*.tmp
+*.bak
+*.log
