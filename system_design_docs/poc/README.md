@@ -1,83 +1,70 @@
-# Synergy AI POC — 開發規劃總覽
+# Synergy AI POC — 文件總覽
 
-> **來源：** `system_design_docs/六大功能模組進度.docx`（藍底 = 客戶指定 POC 範圍）
-> **建立：** 2026-04-22
-> **規劃層級：** 大節點（週 / Phase），不細到單項任務
-
----
-
-## POC 範圍（客戶勾選的藍底項目）
-
-共 **3 個模組、12 個功能**，其中模組 3/4/5 **不在 POC 範圍**。
-
-### 模組 1：AI 獲客行銷模組（2 項）
-
-| 功能 | 優先級 | 現況 | POC 目標 |
-| :--- | :--- | :--- | :--- |
-| 貼文生成引擎 | P0 | 已有 Gemini 手動產圖 + 手排程 | 自動化文案＋圖片＋排程 |
-| SEO 內容頁 | P2 | 新開發 | 健康關鍵字 SEO 內容產出 |
-
-### 模組 2：AI 問卷評估模組（5 項）
-
-| 功能 | 優先級 | 現況 | POC 目標 |
-| :--- | :--- | :--- | :--- |
-| 健康問卷系統 | P0 | 已有基礎（App Script） | Web 化、分段填答、隱私保護 |
-| 問卷結果研判表 | P0 | 已有 LLM 產出摘要 | 表單同寄填答者 |
-| 產品建議表 | P0 | 已有規則＋LLM 推薦 | 同步產出教練版商談建議 |
-| 名單標籤分級 | P0 | 未開發 | 高/中/低潛力權重計分 |
-| 分流規則引擎 | P1 | 未開發 | 可配置性別/年齡/預算/地理等條件 |
-
-### 模組 6：AI 團隊管理模組（5 項 — 全新開發）
-
-| 功能 | 優先級 | POC 目標 |
-| :--- | :--- | :--- |
-| 月目標設定 | P0 | 個人＋團隊目標設定與追蹤（整合 MEGA） |
-| 績效看板 | P0 | 拜訪率/成交率/活躍度即時看板 |
-| 培訓執行追蹤 | P1 | MEGA 培訓課程進度追蹤 |
-| 落後提醒 | P1 | 進度落後自動告警 |
-| 團隊儀表板 | P0 | 團隊轉化漏斗與成員績效總覽 |
+> **POC 範圍：** 3 模組、12 功能 | **工期：** 13 週（2026-04-28 ~ 2026-07-27）
+> **合作模式：** 合夥共創（客戶方 + 開發方共同定義與驗收）
+> **最後更新：** 2026-04-22
 
 ---
 
-## 時程總覽
+## 文件架構
 
-| Phase | 週次 | 起訖 | 內容 |
-| :--- | :--- | :--- | :--- |
-| Phase 0 | W1 | 2026-04-28 ~ 05-04 | POC 啟動、共通基礎 |
-| Phase 1 | W2–W4 | 2026-05-05 ~ 05-25 | 模組 2 POC 補強 |
-| Phase 2 | W5–W7 | 2026-05-26 ~ 06-15 | 模組 1 POC 補強 |
-| Phase 3 | W8–W11 | 2026-06-16 ~ 07-13 | 模組 6 新開發 |
-| Phase 4 | W12–W13 | 2026-07-14 ~ 07-27 | 整合、UAT、部署 |
+```
+Layer 1: WHY（為什麼做）
+  └─ D1. POC Charter
 
-**總工期：13 週（約 3 個月）**，2026-04-28 啟動 → 2026-07-27 POC Demo。
+Layer 2: WHAT（做什麼）
+  ├─ D2. POC-Scoped PRD
+  └─ D3. Success Metrics & Exit Criteria
 
----
+Layer 3: HOW（怎麼做）
+  ├─ D4. Technical Feasibility Assessment
+  ├─ D5. WBS & Timeline + Gantt
+  └─ D6. Risk Register
 
-## 關鍵里程碑（Milestones）
-
-| M# | 日期 | 里程碑 |
-| :--- | :--- | :--- |
-| M1 | 2026-05-04 | POC Kick-off 完成，共通基礎就緒 |
-| M2 | 2026-05-25 | 模組 2 POC 可完整走通（問卷→分級→分流） |
-| M3 | 2026-06-15 | 模組 1 POC 可完整走通（AI 生文→排程→發佈） |
-| M4 | 2026-07-13 | 模組 6 POC 可完整走通（目標→看板→告警） |
-| M5 | 2026-07-27 | 三模組整合 Demo、POC 交付 |
+Layer 4: WHO（誰負責）
+  └─ D7. RACI & Stakeholder Agreement
+```
 
 ---
 
-## 假設與前提
+## 文件索引
 
-- **人力假設：** 小團隊（1–2 名全端 + 1 名 AI/Prompt 工程師）全職投入
-- **技術棧：** 沿用現有 monorepo 結構（FastAPI + React + PostgreSQL）
-- **LLM：** 沿用 Gemini（via LiteLLM）
-- **MEGA 整合：** 模組 6 目標/培訓資料源假設可以 API 或匯入方式取得
-- **Buffer：** 各 Phase 已含 ~15% 緩衝；若 MEGA 整合、Meta 審核遇阻，M5 可能延後 1–2 週
+| # | 文件 | 說明 | 狀態 |
+|---|------|------|------|
+| D1 | [00_poc_charter.md](./00_poc_charter.md) | POC 章程 — 商業假設、範疇邊界、Go/No-Go 決策閘門 | v1.0 |
+| D2 | [01_poc_prd.md](./01_poc_prd.md) | POC 範圍 PRD — 12 功能的 User Story + 驗收標準 | v1.0 |
+| D3 | [02_success_metrics.md](./02_success_metrics.md) | 成功指標與退出標準 — 功能/技術/商業驗證 + Go/No-Go 決策樹 | v1.0 |
+| D4 | [03_technical_feasibility.md](./03_technical_feasibility.md) | 技術可行性評估 — 技術棧、Spike 項目、第三方依賴、整合複雜度 | v1.0 |
+| D5 | [04_wbs.md](./04_wbs.md) | 工作分解結構 — 28 個工作包含驗收標準、5 個里程碑 | v1.1 |
+| D5 | [05_gantt.md](./05_gantt.md) | 甘特圖 — Mermaid 視覺化時程與資源分配 | v1.0 |
+| D6 | [06_risk_register.md](./06_risk_register.md) | 風險登記簿 — 15 項風險、熱力圖、升級流程 | v1.0 |
+| D7 | [07_raci_agreement.md](./07_raci_agreement.md) | RACI 職責矩陣 — 合夥共創協議、溝通節奏、變更管理 | v1.0 |
 
 ---
 
-## 相關文件
+## 閱讀順序建議
 
-- [WBS 工作分解](./wbs.md) — 三模組任務分解、依賴與負責人
-- [甘特圖](./gantt.md) — Mermaid 視覺化時程
-- [原始需求](../六大功能模組進度.docx) — 客戶勾選 POC 範圍
-- [完整 PRD](../01_synergy_ai_prd.md) — 全六模組規格
+1. **先讀 D1（Charter）** — 理解 POC 的「為什麼」和「邊界」
+2. **再讀 D3（Success Metrics）** — 知道怎樣算成功
+3. **然後 D7（RACI）** — 明確雙方職責
+4. **需要細節時讀 D2（PRD）** — 每個功能的具體規格
+5. **技術關注讀 D4（Feasibility）** — 風險和依賴
+6. **執行階段參考 D5 + D6** — WBS 排程和風險追蹤
+
+---
+
+## 上層文件（完整產品）
+
+| 文件 | 說明 |
+|------|------|
+| [01_synergy_ai_prd.md](../01_synergy_ai_prd.md) | 完整 PRD（6 模組） |
+| [02_synergy_ai_sow.md](../02_synergy_ai_sow.md) | 軟體需求分析暨工作說明書 |
+| [03_user_journey_map.md](../03_user_journey_map.md) | 使用者旅程地圖 |
+| [04_module_breakdown.md](../04_module_breakdown.md) | 模組拆解與技術架構 |
+| [05_wbs_pre_development.md](../05_wbs_pre_development.md) | 開發前交付物 WBS |
+
+---
+
+## 原始需求來源
+
+- [六大功能模組進度.docx](../六大功能模組進度.docx) — 客戶勾選 POC 範圍（藍底項目）
