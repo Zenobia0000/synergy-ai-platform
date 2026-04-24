@@ -1,34 +1,92 @@
 {
-  "name": "synergy-questionnaire-ai",
-  "description": "Synergy AI Module 2 POC — questionnaire-driven marketing advice for new coaches",
+  "name": "synergy-ai-closer-copilot",
+  "description": "Synergy AI MVP — 教練成交副駕駛（問卷 + 商談摘要 + CRM + 自動跟進）",
   "created": "2026-04-21",
-  "mode": "完整 POC",
-  "timeline": "3-5 days",
+  "updated": "2026-04-24",
+  "mode": "full",
+  "timeline": "6-8 weeks MVP",
   "language": {
     "backend": "Python 3.12",
     "frontend": "TypeScript"
   },
   "stack": {
-    "backend": ["FastAPI", "Pydantic v2", "uv"],
-    "frontend": ["Next.js 15", "React", "Tailwind CSS"],
+    "backend": ["FastAPI", "Pydantic v2", "uv", "APScheduler", "structlog"],
+    "frontend": ["Next.js 15", "React 19", "Tailwind v4", "@tanstack/react-query"],
+    "database": "Supabase Cloud (PostgreSQL + pgvector + Auth)",
     "llm": {
       "abstraction": "LiteLLM",
       "primary": "gemini/gemini-2.5-flash",
+      "fallback": ["anthropic/claude-haiku-4-5", "anthropic/claude-opus-4-6"],
       "extensible": true
+    },
+    "notifications": {
+      "mvp_primary": "LINE Messaging API",
+      "mvp_fallback": "Resend (Email)",
+      "phase2": "WhatsApp / Telegram (跨品牌擴張時新增)"
+    },
+    "deployment": {
+      "web": "Vercel",
+      "api": "Railway",
+      "db": "Supabase Cloud"
     }
   },
   "uiStyle": {
     "mode": "single",
     "primary": "apple"
   },
-  "outputs": [
-    "health_assessment_summary",
-    "recommended_products",
-    "sales_scripts",
-    "next_actions"
-  ],
-  "deployment": "local_only",
-  "github": "skip",
+  "mvpScope": {
+    "epics": [
+      "A: 智能健康問卷 (Epic A)",
+      "B: 商談前摘要 (Epic B, ★ 核心)",
+      "C: 陽春版 CRM (Epic C)",
+      "D: 自動跟進提醒 (Epic D)"
+    ],
+    "excluded": [
+      "M1 貼文生成/SEO/故事包裝",
+      "M3 預約系統/異議知識庫",
+      "M4 執行追蹤/衛教推播",
+      "M5 成果報表/見證/轉介/潛力推薦",
+      "M6 月目標/績效看板/培訓/團隊儀表板",
+      "Multi-tenant UI (預留 schema)",
+      "合規引擎/多語系"
+    ]
+  },
+  "pilot": {
+    "brand": "Synergy WorldWide",
+    "coaches": 3,
+    "duration": "4-6 weeks",
+    "target_kpis": {
+      "成交率": "≥ 20% (baseline 15%)",
+      "商談準備時間": "≤ 5 min (baseline 30+ min)",
+      "48h 跟進率": "≥ 80% (baseline < 40%)",
+      "問卷完成率": "≥ 50%",
+      "問卷→商談轉換率": "≥ 30%"
+    }
+  },
+  "docs": {
+    "location": "docs/",
+    "mode_produced": "full",
+    "files": [
+      "INDEX.md",
+      "01_prd.md",
+      "02_bdd.md",
+      "03_adr.md",
+      "04_architecture.md",
+      "05_api.md",
+      "06_modules.md",
+      "07_structure.md",
+      "08_design_dependencies.md",
+      "09_frontend_ia.md",
+      "10_security.md",
+      "11_deployment.md"
+    ]
+  },
   "wbsFile": ".claude/taskmaster-data/wbs.md",
-  "prdFile": "rawdata/01_synergy_ai_prd.md"
+  "referencePRD": "system_design_docs/01_synergy_ai_prd.md (v1.0, superseded)",
+  "currentPRD": "docs/01_prd.md (v2.0)",
+  "strategyDocs": [
+    "system_design_docs/健康直銷AI系統_模組分層與MVP規劃.docx",
+    "system_design_docs/健康直銷AI平台_跨品牌擴張策略評估_麥肯錫分析.docx"
+  ],
+  "github": "skip"
 }
